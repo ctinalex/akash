@@ -36,6 +36,9 @@ var (
 	}, []string{"state"})
 )
 
+type EscrowQuerier interface {
+}
+
 type deploymentMonitor struct {
 	bus     pubsub.Bus
 	session session.Session

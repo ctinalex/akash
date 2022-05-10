@@ -259,6 +259,7 @@ func (s *service) run(deployments []ctypes.Deployment) {
 		key := deployment.LeaseID()
 		mgroup := deployment.ManifestGroup()
 		s.managers[key] = newDeploymentManager(s, deployment.LeaseID(), &mgroup)
+		_ = s.bus.Publish(event.LeaseAddFundsMonitor{LeaseID: deployment.LeaseID()})
 		s.updateDeploymentManagerGauge()
 	}
 
@@ -294,8 +295,10 @@ loop:
 
 				manager := newDeploymentManager(s, ev.LeaseID, mgroup)
 				s.managers[key] = manager
+				_ = s.bus.Publish(event.LeaseAddFundsMonitor{LeaseID: ev.LeaseID})
 
 			case mtypes.EventLeaseClosed:
+				_ = s.bus.Publish(event.LeaseRemoveFundsMonitor{LeaseID: ev.ID})
 				s.teardownLease(ev.ID)
 			}
 		case ch := <-s.statusch:

@@ -2,16 +2,18 @@ package cluster
 
 import (
 	"context"
-	lifecycle "github.com/boz/go-lifecycle"
+
+	"github.com/boz/go-lifecycle"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/ovrclk/akash/provider/event"
 	"github.com/ovrclk/akash/provider/session"
 	"github.com/ovrclk/akash/pubsub"
 	metricsutils "github.com/ovrclk/akash/util/metrics"
 	"github.com/ovrclk/akash/util/runner"
 	mtypes "github.com/ovrclk/akash/x/market/types/v1beta2"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 type deploymentWithdrawal struct {
@@ -71,9 +73,7 @@ func (dw *deploymentWithdrawal) run() {
 	var result <-chan runner.Result
 loop:
 	for {
-		withdraw := false
 		select {
-
 		case err := <-dw.lc.ShutdownRequest():
 			dw.log.Debug("shutting down")
 			dw.lc.ShutdownInitiated(err)
@@ -81,21 +81,19 @@ loop:
 		case ev := <-events.Events():
 			// This event contains no information, so if it is
 			// of the correct type attempt a withdrawal
-			_, withdraw = ev.(event.LeaseWithdrawNow)
+			switch ev.(type) {
+			case event.LeaseWithdrawNow:
+				// do the withdrawal
+				result = runner.Do(func() runner.Result {
+					return runner.NewResult(nil, dw.doWithdrawal(ctx))
+				})
+			}
 		case r := <-result:
 			result = nil
 			if err := r.Error(); err != nil {
 				dw.log.Error("failed to do withdrawal", "err", err)
 			}
 		}
-
-		if withdraw {
-			// do the withdrawal
-			result = runner.Do(func() runner.Result {
-				return runner.NewResult(nil, dw.doWithdrawal(ctx))
-			})
-		}
-
 	}
 	cancel()
 

@@ -2,6 +2,7 @@ package event
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	manifest "github.com/ovrclk/akash/manifest/v2beta1"
 	dtypes "github.com/ovrclk/akash/x/deployment/types/v1beta2"
 	mtypes "github.com/ovrclk/akash/x/market/types/v1beta2"
@@ -53,5 +54,13 @@ type ClusterDeployment struct {
 	Status  ClusterDeploymentStatus
 }
 
-// Empty type used as a marker to indicate _any_ lease should be withdrawn now
+// LeaseWithdrawNow Empty type used as a marker to indicate leases should should be withdrawn now
 type LeaseWithdrawNow struct{}
+
+type LeaseAddFundsMonitor struct {
+	mtypes.LeaseID
+}
+
+type LeaseRemoveFundsMonitor struct {
+	mtypes.LeaseID
+}

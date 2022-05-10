@@ -87,6 +87,7 @@ const (
 	FlagManifestTimeout                  = "manifest-timeout"
 	FlagMetricsListener                  = "metrics-listener"
 	FlagWithdrawalPeriod                 = "withdrawal-period"
+	FlagLeaseFundsMonitorInterval        = "lease-funds-monitor-interval"
 	FlagMinimumBalance                   = "minimum-balance"
 	FlagBalanceCheckPeriod               = "balance-check-period"
 	FlagProviderConfig                   = "provider-config"
@@ -104,6 +105,13 @@ func RunCmd() *cobra.Command {
 		Use:          "run",
 		Short:        "run akash provider",
 		SilenceUsage: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			leaseFundsMonInterval := viper.GetDuration(FlagLeaseFundsMonitorInterval)
+			if leaseFundsMonInterval > 0 && leaseFundsMonInterval < time.Minute {
+				return fmt.Errorf("\"lease-funds-monitor-interval\" contains invalid value. expected 0 or >=1m")
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return common.RunForeverWithContext(cmd.Context(), func(ctx context.Context) error {
 				return doRunCmd(ctx, cmd, args)
@@ -279,6 +287,11 @@ func RunCmd() *cobra.Command {
 
 	cmd.Flags().Duration(FlagWithdrawalPeriod, time.Hour*24, "period at which withdrawals are made from the escrow accounts")
 	if err := viper.BindPFlag(FlagWithdrawalPeriod, cmd.Flags().Lookup(FlagWithdrawalPeriod)); err != nil {
+		return nil
+	}
+
+	cmd.Flags().Duration(FlagLeaseFundsMonitorInterval, time.Minute*10, "interval at which lease is checked for funds available on the escrow accounts. 0 or >= 1m")
+	if err := viper.BindPFlag(FlagLeaseFundsMonitorInterval, cmd.Flags().Lookup(FlagLeaseFundsMonitorInterval)); err != nil {
 		return nil
 	}
 
@@ -582,6 +595,7 @@ func doRunCmd(ctx context.Context, cmd *cobra.Command, _ []string) error {
 		PollingPeriod:           viper.GetDuration(FlagBalanceCheckPeriod),
 		MinimumBalanceThreshold: viper.GetUint64(FlagMinimumBalance),
 		WithdrawalPeriod:        viper.GetDuration(FlagWithdrawalPeriod),
+		LeaseFundCheckInterval:  viper.GetDuration(FlagLeaseFundsMonitorInterval),
 	}
 
 	config.BidPricingStrategy = pricing
